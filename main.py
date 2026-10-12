@@ -3,6 +3,26 @@ import os
 import pathlib
 import shutil
 import subprocess
+import sys
+
+
+PACKAGE_TYPES = {
+    "app": {
+        "description": "Application package created with `uv init --app`",
+        "uv_args": ["--app"],
+    },
+    "lib": {
+        "description": "Library package created with `uv init --lib`",
+        "uv_args": ["--lib"],
+    },
+}
+
+
+def print_package_types() -> None:
+    print("Available package types:")
+    for name, config in PACKAGE_TYPES.items():
+        print(f"  {name:<4} {config['description']}")
+    print("\nIf no package type is specified, `app` is used.")
 
 
 def parse_args() -> argparse.Namespace:
@@ -10,6 +30,14 @@ def parse_args() -> argparse.Namespace:
         description="Create a Python project initialized with uv, pytest, mypy, and ruff."
     )
     parser.add_argument("project_name", help="Name of the project directory to create")
+    parser.add_argument(
+        "--type",
+        "-t",
+        dest="package_type",
+        choices=PACKAGE_TYPES.keys(),
+        default="app",
+        help="Type of package to create (default: app)",
+    )
     parser.add_argument(
         "--directory",
         "-C",
@@ -34,6 +62,13 @@ def overwrite_project_toml(project_dir: pathlib.Path) -> None:
     scripts["typecheck"] = "project.tasks:typecheck"
     scripts["lint"] = "project.tasks:lint"
     scripts["format"] = "project.tasks:format"
+    scripts["clean"] = "project.tasks:clean"
+
+    tool = config.setdefault("tool", tomlkit.table())
+    uv = tool.setdefault("uv", tomlkit.table())
+    build_backend = uv.setdefault("build-backend", tomlkit.table())
+    build_backend["source-exclude"] = ["src/project/**"]
+    build_backend["wheel-exclude"] = ["src/project/**"]
 
     with open(file_path, "w", encoding="utf-8") as f:
         tomlkit.dump(config, f)
@@ -57,8 +92,13 @@ def run_cmd(cmd: list[str], target_dir: pathlib.Path) -> bool:
 
 
 def main() -> None:
+    if len(sys.argv) == 1:
+        print_package_types()
+        return
+
     args = parse_args()
     project_name = args.project_name
+    package_type = args.package_type
     target_dir = args.directory.resolve()
 
     self_dir = pathlib.Path(__file__).resolve().parent
@@ -69,7 +109,8 @@ def main() -> None:
             "Project target directory cannot be same as create script directory"
         )
 
-    if not run_cmd(["uv", "init", project_name], target_dir):
+    uv_init_args = PACKAGE_TYPES[package_type]["uv_args"]
+    if not run_cmd(["uv", "init", *uv_init_args, project_name], target_dir):
         raise SystemExit("Project creation failed")
 
     if not run_cmd(["uv", "add", "--dev", "ruff", "mypy", "pytest"], project_dir):

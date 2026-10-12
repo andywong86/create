@@ -18,6 +18,7 @@ uv run -- typecheck
 uv run -- lint
 uv run -- format
 uv run -- build
+uv run -- clean
 ```
 
 ## Python style

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pathlib
+import shutil
 import subprocess
 
 
@@ -29,12 +31,35 @@ def format() -> None:
     _run_and_exit("ruff", "format")
 
 
+def clean() -> None:
+    root = pathlib.Path.cwd()
+    directories = [
+        root / "dist",
+        root / "build",
+        root / ".mypy_cache",
+        root / ".pytest_cache",
+        root / ".ruff_cache",
+    ]
+    directories.extend(root.glob("*.egg-info"))
+    directories.extend(root.rglob("__pycache__"))
+
+    for directory in directories:
+        if directory.is_dir():
+            shutil.rmtree(directory)
+
+    for pattern in ("*.pyc", "*.pyo"):
+        for file_path in root.rglob(pattern):
+            if file_path.is_file():
+                file_path.unlink()
+
+
 def build() -> None:
     for command in [
         ("pytest",),
         ("mypy", "."),
         ("ruff", "format"),
         ("ruff", "check", "--fix"),
+        ("uv", "build"),
     ]:
         returncode = _run(*command)
         if returncode != 0:
