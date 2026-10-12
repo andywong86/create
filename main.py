@@ -65,7 +65,9 @@ def main() -> None:
     project_dir = target_dir / project_name
 
     if self_dir == project_dir:
-        raise SystemExit("Project target directory cannot be same as create script directory")
+        raise SystemExit(
+            "Project target directory cannot be same as create script directory"
+        )
 
     if not run_cmd(["uv", "init", project_name], target_dir):
         raise SystemExit("Project creation failed")
@@ -92,6 +94,7 @@ def main() -> None:
     )
 
     shutil.copy2(self_dir / "README.md", project_dir / "README.md")
+    shutil.copy2(self_dir / "AGENTS.md", project_dir / "AGENTS.md")
     shutil.copy2(self_dir / ".editorconfig", project_dir / ".editorconfig")
 
     overwrite_project_toml(project_dir)
@@ -99,6 +102,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
-
