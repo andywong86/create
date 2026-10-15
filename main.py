@@ -21,13 +21,18 @@ PACKAGE_TYPES = {
         "uv_args": ["--app"],
         "dependencies": ["flask"],
     },
+    "api": {
+        "description": "Flask JSON API created with `uv init --app`",
+        "uv_args": ["--app"],
+        "dependencies": ["flask"],
+    },
 }
 
 
 def print_package_types() -> None:
     print("Available package types:")
     for name, config in PACKAGE_TYPES.items():
-        print(f"  {name:<4} {config['description']}")
+        print(f"  {name:<6} {config['description']}")
     print("\nIf no package type is specified, `app` is used.")
 
 
@@ -76,7 +81,7 @@ def overwrite_project_toml(
     scripts["lint"] = "project.tasks:lint"
     scripts["format"] = "project.tasks:format"
     scripts["clean"] = "project.tasks:clean"
-    if package_type == "webapp":
+    if package_type in {"api", "webapp"}:
         scripts["serve"] = f"{package_module_name(project_name)}.app:main"
 
     tool = config.setdefault("tool", tomlkit.table())
@@ -166,6 +171,57 @@ def test_index() -> None:
     )
 
 
+def write_api_files(project_dir: pathlib.Path, project_name: str) -> None:
+    """Add a minimal Flask JSON API."""
+    module_name = package_module_name(project_name)
+    package_dir = project_dir / "src" / module_name
+    package_dir.mkdir(parents=True, exist_ok=True)
+
+    (package_dir / "app.py").write_text(
+        f'''from flask import Flask
+
+
+app = Flask(__name__)
+
+
+@app.get("/")
+def index() -> dict[str, str]:
+    return {{"message": "Hello from {project_name}!"}}
+
+
+@app.get("/health")
+def health() -> dict[str, str]:
+    return {{"status": "ok"}}
+
+
+def main() -> None:
+    app.run(debug=True)
+''',
+        encoding="utf-8",
+    )
+    (project_dir / "tests" / "test_api.py").write_text(
+        f'''from {module_name}.app import app
+
+
+def test_index() -> None:
+    client = app.test_client()
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert response.get_json() == {{"message": "Hello from {project_name}!"}}
+
+
+def test_health() -> None:
+    client = app.test_client()
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.get_json() == {{"status": "ok"}}
+''',
+        encoding="utf-8",
+    )
+
+
 def run_cmd(cmd: list[str], target_dir: pathlib.Path) -> bool:
     try:
         subprocess.run(cmd, cwd=target_dir, check=True)
@@ -201,7 +257,10 @@ def main() -> None:
     if dependencies and not run_cmd(["uv", "add", *dependencies], project_dir):
         raise SystemExit("Dependency addition failed")
 
-    if not run_cmd(["uv", "add", "--dev", "ruff", "mypy", "pytest"], project_dir):
+    if not run_cmd(
+        ["uv", "add", "--dev", "ruff", "mypy", "pytest", "pytest-cov"],
+        project_dir,
+    ):
         raise SystemExit("Dev dependency addition failed")
 
     shutil.copytree(
@@ -232,6 +291,8 @@ def main() -> None:
 
     if package_type == "webapp":
         write_webapp_files(project_dir, project_name)
+    elif package_type == "api":
+        write_api_files(project_dir, project_name)
 
     overwrite_project_toml(project_dir, project_name, package_type)
 

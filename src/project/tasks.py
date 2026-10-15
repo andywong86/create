@@ -16,7 +16,7 @@ def _run_and_exit(*args: str) -> None:
 
 
 def test() -> None:
-    _run_and_exit("pytest")
+    _run_and_exit("pytest", "--cov", "--cov-report=term-missing")
 
 
 def typecheck() -> None:
@@ -39,6 +39,8 @@ def clean() -> None:
         root / ".mypy_cache",
         root / ".pytest_cache",
         root / ".ruff_cache",
+        root / ".coverage",
+        root / "htmlcov",
     ]
     directories.extend(root.glob("*.egg-info"))
     directories.extend(root.rglob("__pycache__"))
@@ -55,7 +57,7 @@ def clean() -> None:
 
 def build() -> None:
     for command in [
-        ("pytest",),
+        ("pytest", "--cov", "--cov-report=term-missing"),
         ("mypy", "."),
         ("ruff", "format"),
         ("ruff", "check", "--fix"),
