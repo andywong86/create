@@ -6,5 +6,8 @@ dist/
 wheels/
 *.egg-info
 
+# pi harness memory and session files
+*.jsonl
+
 # Virtual environments
 .venv

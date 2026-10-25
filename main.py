@@ -21,6 +21,9 @@ PACKAGE_TYPES = {
         "uv_args": ["--app"],
         "dependencies": ["flask"],
     },
+    "html": {
+        "description": "Brython HTML project initialized with git and brython-cli",
+    },
     "api": {
         "description": "Flask JSON API created with `uv init --app`",
         "uv_args": ["--app"],
@@ -38,7 +41,7 @@ def print_package_types() -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Create a Python project initialized with uv, pytest, mypy, and ruff."
+        description="Create a Python project with development tools or a Brython HTML project."
     )
     parser.add_argument("project_name", help="Name of the project directory to create")
     parser.add_argument(
@@ -248,6 +251,18 @@ def main() -> None:
         raise SystemExit(
             "Project target directory cannot be same as create script directory"
         )
+
+    if package_type == "html":
+        project_dir.mkdir()
+        if not run_cmd(["git", "init"], project_dir):
+            raise SystemExit("Git initialization failed")
+        if not run_cmd(
+            ["uvx", "--from", "brython", "brython-cli", "init"], project_dir
+        ):
+            raise SystemExit("Brython initialization failed")
+        for filename in (".editorconfig", "LICENSE", ".gitignore"):
+            shutil.copy2(self_dir / filename, project_dir / filename)
+        return
 
     uv_init_args = PACKAGE_TYPES[package_type]["uv_args"]
     if not run_cmd(["uv", "init", *uv_init_args, project_name], target_dir):
